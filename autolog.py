@@ -515,7 +515,7 @@ def testsuite():
             self.assertEqual(4, retval.next())
             self.assertLog("""
             [call] squares(3)
-            [exit] squares(3) = <generator object at 0xb7d7282c>
+            [exit] squares(3) = <generator object squares at 0xb7d7282c>
             """)
 
         def testLambdaExpression(self):
