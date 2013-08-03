@@ -42,16 +42,7 @@ SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 __author__ = "Claudio Jolowicz <jolowicz@gmail.com>"
 __date__ = "1 April 2007"
 __version__ = "0.2.2"
-
-##############################################################################
-# Exported classes
-##############################################################################
-
 __all__ = ['logged', 'autolog']
-
-##############################################################################
-# _logged class
-##############################################################################
 
 class _logged(object):
     """Logging decorator implementation.
@@ -59,15 +50,13 @@ class _logged(object):
     This is an internal base class which provides the common
     implementation for the logged and logged.__get__ classes.
     """
-    #log = open('/tmp/autolog.log', 'w')
     import sys
     log = sys.stderr
-    
+
     def __init__(self, func):
         """Grab the function and get a printable representation."""
         object.__setattr__(self, '_func', func)
 
-        # Get a printable representation of the function.
         if hasattr(func, '__name__') and func.__name__ != '<lambda>':
             object.__setattr__(self, '_repr', func.__name__)
         else:
@@ -75,27 +64,24 @@ class _logged(object):
 
     def __call__(self, *args, **kwargs):
         """Invoke the decorated function, logging its entry and exit."""
-        # Get a printable representation of the arguments.
-        args_repr = str.join(', ', 
+        args_repr = ', '.join(
             [repr(arg) for arg in args] +
             ['%s=%r' % (name, value) for name, value in kwargs.iteritems()])
 
-        # Perform the logged call.
         self.log.write('[call] %s(%s)\n' % (self._repr, args_repr))
         retval = self._func(*args, **kwargs)
         self.log.write('[exit] %s(%s) = %r\n' % (self._repr, args_repr, retval))
 
-        # Pretend nothing's happened.
         return retval
-    
-    # Delegate all the rest to the wrapped function.
-    def __getattr__(self, name): return getattr(self._func, name)
-    def __setattr__(self, name, value): setattr(self._func, name, value)
-    def __delattr__(self, name): delattr(self._func, name)
-    
-##############################################################################
-# logged class
-##############################################################################
+
+    def __getattr__(self, name):
+        return getattr(self._func, name)
+
+    def __setattr__(self, name, value):
+        setattr(self._func, name, value)
+
+    def __delattr__(self, name):
+        delattr(self._func, name)
 
 class logged(_logged):
     r"""Decorator to log calls.
@@ -107,8 +93,8 @@ class logged(_logged):
 
         @logged
         def frobnicate(s):
-          return str.join('', chr(ord(c)^42) for c in s)
- 
+          return ''.join(chr(ord(c)^42) for c in s)
+
     In this example, calling frobnicate('god') will result in the
     following log messages:
 
@@ -170,13 +156,13 @@ class logged(_logged):
         - __repr__ on the class of an unbound method
         - __repr__ on all arguments and return values
 
-    FIXIT: Mention builtins called by the decorator; logging them may
+    FIXME: Mention builtins called by the decorator; logging them may
     cause infinite recursion, too. Example: hasattr (?)
-    
+
     Obviously, the decorator also invokes the decorated function, but
     it is harmless if that function has already been decorated. As a
     simple rule, never decorate the __repr__ method of a class.
-    
+
     If your class decorates __init__, make sure to catch an
     AttributeError in __repr__. This is necessary because __repr__
     will be called by the decorator before __init__ has completed. An
@@ -207,13 +193,13 @@ class logged(_logged):
         (1) You should mirror the implementation of logged, separating
             the basic logic (_logged class) from the descriptor
             implementation (logged and logged.__get__ classes).
-    
+
         (2) Your __get__ class should inherit from both logged.__get__
             and your _logged subclass. Use super to ensure all class
             constructors are called.
 
     This is best explained with an example:
-    
+
         class _xlogged(_logged):
             def __init__(self, func):
                 super(_xlogged, self).__init__(func)
@@ -228,7 +214,7 @@ class logged(_logged):
 
     In this example, invoking a decorated function will produce the
     following call graph:
-        
+
         T.func(obj)
          |- <function 'xlogged.__get__.__init__'>
          |   `- <function 'logged.__get__.__init__'>
@@ -237,7 +223,7 @@ class logged(_logged):
          `- <function '_xlogged.__call__'>
              `- <function '_logged.__call__'>
                   `- <function 'T.func'>
-    
+
     """
     class __get__(_logged):
         """
@@ -280,10 +266,6 @@ class logged(_logged):
             else: # owner is not None
                 object.__setattr__(self, '_repr', '%r.%s' % (owner, self._repr))
 
-##############################################################################
-# autolog class
-##############################################################################
-
 def skip(func):
     func._skip_autolog = True
     return func
@@ -299,9 +281,11 @@ class autolog(type):
 
     To enable logging for an already existing class, use:
 
-        class Empty: pass
+        class Empty:
+            pass
+
         Empty = autolog(Empty)
-    
+
     This metaclass automatically decorates all methods or other
     callables in its classes with the `logged' decorator. More
     precisely, a class attribute is decorated iff it is not __repr__,
@@ -350,10 +334,6 @@ class autolog(type):
                         _dict[_key] = logged(getattr(obj, _key))
                 dict[key] = property(**_dict)
         return type.__new__(cls, name, bases, dict)
-
-##############################################################################
-# Facilities for running tests from the command line
-##############################################################################
 
 def testsuite():
     class Torinese(object):
@@ -404,20 +384,20 @@ def testsuite():
         def tearDown(self):
             sys.stdout.write(_logged.log.getvalue())
             _logged.log.close()
-        
+
         def assertInLog(self, text):
             try:
                 log = _logged.log.getvalue()
                 self.assert_(text in log)
             except AssertionError:
                 raise AssertionError, '%r not in %r' % (text, log)
-            
+
         def assertLog(self, expect):
             def clean(s):
                 # weed address references
                 s = re.sub('0x[0-9a-f]+', '0x0', s)
                 # strip whitespace
-                s = str.join('\n', map(str.strip, s.strip().split('\n')))
+                s = '\n'.join(map(str.strip, s.strip().split('\n')))
                 return s
 
             log = _logged.log.getvalue()
@@ -430,28 +410,28 @@ def testsuite():
             self.assert_('cPickle' in vars())
             self.assertInLog('__import__')
             __builtins__.__import__ = _import
-            
+
         def testBuiltinAbs(self):
             """Testing built-in abs"""
             _abs, __builtins__.abs = __builtins__.abs, logged(__builtins__.abs)
             self.assertEqual(abs(-7), 7)
             self.assertInLog('abs')
             __builtins__.abs = _abs
-        
+
         def testBuiltinBool(self):
             """Testing built-in bool"""
             _bool, __builtins__.bool = __builtins__.bool, logged(__builtins__.bool)
             self.assertEqual(bool(5), True)
             self.assertInLog('bool')
             __builtins__.bool = _bool
-        
+
         def testBuiltinGetAttr(self):
             """Testing built-in getattr"""
             _getattr, __builtins__.getattr = __builtins__.getattr, logged(__builtins__.getattr)
             self.assertEqual(getattr(5, '__class__'), int)
             self.assertInLog('getattr')
             __builtins__.getattr = _getattr
-            
+
         def testBuiltinStaticmethod(self):
             """Testing built-in staticmethod"""
             _staticmethod, __builtins__.staticmethod = __builtins__.staticmethod, logged(__builtins__.staticmethod)
@@ -460,27 +440,27 @@ def testsuite():
                 def foo(): return 42
             self.assertInLog('staticmethod')
             __builtins__.staticmethod = _staticmethod
-            
+
         def testBuiltinStr(self):
             """Testing built-in str"""
             _str, __builtins__.str = __builtins__.str, logged(__builtins__.str)
             self.assertEqual(str(5), "5")
             self.assertInLog('str')
             __builtins__.str = _str
-            
+
         def testBuiltinDict(self):
             """Testing built-in dict"""
             _dict, __builtins__.dict = __builtins__.dict, logged(__builtins__.dict)
             self.assertEqual(dict(), {})
             self.assertInLog('dict')
             __builtins__.dict = _dict
-            
+
         def testBuiltinDivmod(self):
             """Testing built-in divmod"""
             _divmod, __builtins__.divmod = __builtins__.divmod, logged(__builtins__.divmod)
             self.assertEqual(divmod(7, 2), (3, 1))
             __builtins__.divmod = _divmod
-        
+
         def testBuiltinNew(self):
             """Testing built-in object.__new__ (not supported)"""
             try:
@@ -488,7 +468,7 @@ def testsuite():
                 obj = object()
             except TypeError:
                 pass
-        
+
         def testFunction(self):
             """Testing user-defined function"""
             @logged
@@ -521,7 +501,7 @@ def testsuite():
         def testLambdaExpression(self):
             """Testing lambda expression"""
             identity = logged(lambda x: x)
-    
+
             retval = identity(identity)
             self.assertEqual(retval, identity)
             self.assertLog("""
@@ -811,7 +791,7 @@ def testsuite():
             [call] Milanese('Guido').show('Madonna...')
             [exit] Milanese('Guido').show('Madonna...') = None
             """)
-    
+
         def testClassNewPosterior(self):
             """Testing __new__ method, decorated after type construction"""
             class NewConfusion(object):
@@ -821,7 +801,7 @@ def testsuite():
 
             obj = NewConfusion()
             self.assertInLog('__new__')
-    
+
         def testClassNewPosteriorDict(self):
             """Testing __new__ method, decorated after type construction using __dict__"""
             class NewerConfusion(object):
@@ -857,7 +837,7 @@ def testsuite():
             [call] <__main__.Foo object at 0xb7d24bcc>.__init__()
             [exit] <__main__.Foo object at 0xb7d24bcc>.__init__() = None
             """)
-    
+
         def testConvertType(self):
             """Testing type conversion"""
             class Foo(object):
@@ -869,26 +849,16 @@ def testsuite():
             [call] <__main__.Foo object at 0xb7d4c38c>.__init__()
             [exit] <__main__.Foo object at 0xb7d4c38c>.__init__() = None
             """)
-            # DO NOT RUN THIS CODE:
-            #_str, __builtins__.str = __builtins__.str, autolog(__builtins__.str)
-            #str.join(',', [1,2])
-            #__builtins__.str = _str
-    
-    return unittest.TestLoader().loadTestsFromTestCase(AutologTestCase)
 
-##############################################################################
-# Executing this module from the command line
-##############################################################################
+    return unittest.TestLoader().loadTestsFromTestCase(AutologTestCase)
 
 if __name__ == '__main__':
     import unittest, sys, StringIO
 
-    # Redirect stdout to a string buffer.
     _stdout, sys.stdout = sys.stdout, StringIO.StringIO()
 
     unittest.TextTestRunner(verbosity=2).run(testsuite())
 
-    # Restore stdout and flush the string buffer.
     _stdout, sys.stdout = sys.stdout, _stdout
 
     if '--verbose' in sys.argv[1:]:
